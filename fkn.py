@@ -3,6 +3,7 @@ import google.generativeai as genai
 import json
 import re
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from collections import Counter
 import os
@@ -18,9 +19,15 @@ except ImportError:
 try:
     from newspaper import Article
     URL_SUPPORT = True
+    URL_METHOD = "newspaper"
 except ImportError:
-    URL_SUPPORT = False
-    st.warning("URL support not available. Install newspaper3k to enable URL parsing.")
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        URL_SUPPORT = True
+        URL_METHOD = "requests"
+    except ImportError:
+        URL_SUPPORT = False
 
 try:
     from dotenv import load_dotenv
@@ -209,15 +216,55 @@ def read_pdf(file):
         return f"Error reading PDF: {str(e)}"
 
 def read_url(url):
-    """Extract text from URL"""
+    """Extract text from URL using available method"""
     if not URL_SUPPORT:
         return None
     
     try:
-        article = Article(url)
-        article.download()
-        article.parse()
-        return article.text
+        if URL_METHOD == "newspaper":
+            # Use newspaper3k if available
+            article = Article(url)
+            article.download()
+            article.parse()
+            return article.text
+        
+        elif URL_METHOD == "requests":
+            # Use requests + BeautifulSoup as fallback
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Try to find article content (common article tags)
+            article_content = None
+            for tag in ['article', 'main', '[role="main"]', '.post-content', '.article-content', '.entry-content']:
+                content = soup.select_one(tag)
+                if content:
+                    article_content = content
+                    break
+            
+            # If no article content found, use body
+            if not article_content:
+                article_content = soup.find('body')
+            
+            if article_content:
+                # Extract text
+                text = article_content.get_text()
+                # Clean up text
+                lines = (line.strip() for line in text.splitlines())
+                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                text = ' '.join(chunk for chunk in chunks if chunk)
+                return text
+            
+            return "Could not extract article content"
+        
     except Exception as e:
         st.error(f"Error fetching URL: {str(e)}")
         return None
@@ -287,24 +334,36 @@ def page_detector():
                 else:
                     st.error(current_text)
     
-    elif st.session_state.input_method == "Enter URL" and URL_SUPPORT:
-        url = st.text_input(
-            "🔗 Enter news article URL", 
-            value=st.session_state.url,
-            placeholder="https://example.com/news-article"
-        )
-        st.session_state.url = url
-        
-        if url and st.button("🌐 Fetch Article"):
-            with st.spinner("🌐 Fetching article content..."):
-                fetched = read_url(url)
-                if fetched:
-                    current_text = fetched
-                    st.success("✅ Content fetched successfully!")
-                    with st.expander("📄 Fetched Content Preview"):
-                        st.text(current_text[:500] + "..." if len(current_text) > 500 else current_text)
-                else:
-                    st.error("❌ Could not extract content from the URL.")
+    elif st.session_state.input_method == "Enter URL":
+        if not URL_SUPPORT:
+            st.warning("⚠️ URL support requires additional packages. Install with: `pip install requests beautifulsoup4 newspaper3k`")
+        else:
+            if URL_METHOD == "requests":
+                st.info("ℹ️ Using basic URL parsing. For better results, install newspaper3k: `pip install newspaper3k`")
+            
+            url = st.text_input(
+                "🔗 Enter news article URL", 
+                value=st.session_state.url,
+                placeholder="https://example.com/news-article"
+            )
+            st.session_state.url = url
+            
+            if url and st.button("🌐 Fetch Article"):
+                with st.spinner("🌐 Fetching article content..."):
+                    fetched = read_url(url)
+                    if fetched:
+                        current_text = fetched
+                        # Store the fetched content in session state
+                        st.session_state.fetched_content = current_text
+                        st.success("✅ Content fetched successfully!")
+                        with st.expander("📄 Fetched Content Preview"):
+                            st.text(current_text[:500] + "..." if len(current_text) > 500 else current_text)
+                    else:
+                        st.error("❌ Could not extract content from the URL.")
+            
+            # Use fetched content if available
+            if hasattr(st.session_state, 'fetched_content') and st.session_state.fetched_content:
+                current_text = st.session_state.fetched_content
     
     st.session_state.current_text = current_text
     
@@ -350,7 +409,7 @@ def page_detector():
                 st.write(result["reason"])
             
             # Save to history
-            st.session_state.history.append({
+            history_entry = {
                 "text": current_text[:300] + ("..." if len(current_text) > 300 else ""),
                 "full_text": current_text,
                 "verdict": result["verdict"],
@@ -358,8 +417,15 @@ def page_detector():
                 "score": result["credibility_score"],
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "language": st.session_state.language,
-                "model": "Gemini 1.5 Flash"
-            })
+                "model": "Gemini 1.5 Flash",
+                "input_method": st.session_state.input_method
+            }
+            
+            # Add URL if it was used
+            if st.session_state.input_method == "Enter URL" and st.session_state.url:
+                history_entry["source_url"] = st.session_state.url
+            
+            st.session_state.history.append(history_entry)
             
             st.success("✅ Analysis complete! Check History to view all analyses.")
 
@@ -390,7 +456,13 @@ def page_dashboard():
     st.bar_chart(verdict_counts)
     
     st.markdown("### 📊 Score Distribution")
-    st.histogram_chart(df['score'])
+    # Create histogram using bar chart
+    import numpy as np
+    scores = df['score'].values
+    bins = np.histogram(scores, bins=10)[0]
+    bin_labels = [f"{i*10}-{(i+1)*10}" for i in range(10)]
+    score_dist = pd.DataFrame({'Score Range': bin_labels, 'Count': bins})
+    st.bar_chart(score_dist.set_index('Score Range'))
     
     # Recent activity
     st.markdown("### 🕒 Recent Activity")
@@ -429,10 +501,16 @@ def page_history():
                 st.text(entry['text'])
                 st.markdown("**Analysis:**")
                 st.write(entry['reason'])
+                
+                # Show source URL if available
+                if 'source_url' in entry and entry['source_url']:
+                    st.markdown(f"**Source URL:** [{entry['source_url']}]({entry['source_url']})")
+                    
             with col2:
                 st.metric("Score", f"{entry['score']}/100")
                 st.write(f"**Language:** {entry.get('language', 'English')}")
                 st.write(f"**Model:** {entry.get('model', 'Gemini')}")
+                st.write(f"**Input Method:** {entry.get('input_method', 'Unknown')}")
                 
                 if st.button(f"🗑️ Delete", key=f"delete_{i}"):
                     # Find and remove this entry
@@ -453,7 +531,12 @@ def page_export():
     
     # Export options
     st.markdown("### 📋 Data Preview")
-    display_df = df[['timestamp', 'verdict', 'score', 'language', 'model']].copy()
+    display_columns = ['timestamp', 'verdict', 'score', 'language', 'model', 'input_method']
+    # Add source_url column if any entries have it
+    if any('source_url' in entry for entry in st.session_state.history):
+        display_columns.append('source_url')
+    
+    display_df = df[display_columns].copy()
     st.dataframe(display_df, use_container_width=True)
     
     st.markdown("### 💾 Export Options")
