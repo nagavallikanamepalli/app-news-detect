@@ -9,7 +9,7 @@ import os
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=API_KEY)
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 genai.configure(api_key=API_KEY)
 MODEL_NAME = "gemini-1.5-flash"
@@ -240,6 +240,7 @@ def main():
         "Export": page_export
     }
     pages[st.session_state.page]()
+
 
 if __name__ == "__main__":
     main()
