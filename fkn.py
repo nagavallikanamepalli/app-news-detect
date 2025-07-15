@@ -347,8 +347,8 @@ def page_detector():
         if not URL_SUPPORT:
             st.warning("⚠️ URL support requires additional packages. Install with: `pip install requests beautifulsoup4 newspaper3k`")
         else:
-            if URL_METHOD == "requests":
-                st.info("ℹ️ Using basic URL parsing. For better results, install newspaper3k: `pip install newspaper3k`")
+            # if URL_METHOD == "requests":
+            #     st.info("ℹ️ Using basic URL parsing. For better results, install newspaper3k: `pip install newspaper3k`")
             
             url = st.text_input(
                 "🔗 Enter news article URL", 
