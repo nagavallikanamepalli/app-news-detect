@@ -8,6 +8,15 @@ from datetime import datetime
 from collections import Counter
 import os
 
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+print("API Key:", os.environ.get("GOOGLE_API_KEY"))  # Debug
+
+
+
 # Try to import optional dependencies with fallbacks
 try:
     import fitz  # PyMuPDF
