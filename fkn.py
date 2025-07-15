@@ -370,23 +370,25 @@ def page_detector():
             #         else:
             #             st.error("❌ Could not extract content from the URL.")
 
+            # Fetch content if URL is provided
+
             if url and st.button("🌐 Fetch Article"):
-    with st.spinner("🌐 Fetching article content..."):
-        fetched = read_url(url)
+                with st.spinner("🌐 Fetching article content..."):
+                    fetched = read_url(url)
         
-        if fetched and not fetched.startswith("Error") and "403" not in fetched:
-            current_text = fetched
-            st.session_state.fetched_content = current_text
-            st.success("✅ Content fetched successfully!")
-            with st.expander("📄 Fetched Content Preview"):
-                st.text(current_text[:500] + "..." if len(current_text) > 500 else current_text)
-        else:
-            st.warning("⚠️ This website has blocked automated scraping. Please copy and paste the article manually below:")
-            current_text = st.text_area(
-                "📝 Paste your news article here (fallback)",
-                height=200,
-                placeholder="Paste the article text here since automatic URL fetch failed..."
-            )
+                    if fetched and not fetched.startswith("Error") and "403" not in fetched:
+                        current_text = fetched
+                        st.session_state.fetched_content = current_text
+                        st.success("✅ Content fetched successfully!")
+                        with st.expander("📄 Fetched Content Preview"):
+                            st.text(current_text[:500] + "..." if len(current_text) > 500 else current_text)
+                    else:
+                        st.warning("⚠️ This website has blocked automated scraping. Please copy and paste the article manually below:")
+                        current_text = st.text_area(
+                            "📝 Paste your news article here (fallback)",
+                            height=200,
+                            placeholder="Paste the article text here since automatic URL fetch failed..."
+                        )
 
             
             # Use fetched content if available
