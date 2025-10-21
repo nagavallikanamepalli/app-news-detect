@@ -34,6 +34,11 @@ Run the following command to install all required packages:
 pip install -r requirements.txt
 ```
 
+**Important:** Make sure you have the latest version:
+```bash
+pip install --upgrade google-generativeai
+```
+
 ### Step 3: Configure Your API Key
 
 **Your API key is already configured in two places:**
@@ -196,10 +201,16 @@ The app uses:
 - Install optional packages: `pip install newspaper3k requests beautifulsoup4`
 - Some websites block automated scraping - use manual paste instead
 
+**Issue: "404 model not found" error**
+- Update the google-generativeai library: `pip install --upgrade google-generativeai`
+- The app will automatically try multiple model versions to find one that works
+- Check that your API key is valid at [Google AI Studio](https://makersuite.google.com/app/apikey)
+
 **Issue: Analysis gives error**
 - Ensure your API key is valid and active
 - Check your internet connection
 - Verify you haven't exceeded API quotas
+- Try updating the library: `pip install --upgrade google-generativeai`
 
 ---
 

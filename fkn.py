@@ -60,7 +60,30 @@ if not API_KEY:
 
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    MODEL_NAME = "gemini-pro"
+    # List of model names to try (in order of preference)
+    MODELS_TO_TRY = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash",
+        "gemini-pro",
+        "gemini-1.0-pro"
+    ]
+    MODEL_NAME = None
+
+    # Try to find an available model
+    for model_name in MODELS_TO_TRY:
+        try:
+            test_model = genai.GenerativeModel(model_name)
+            # Try a simple test to see if model works
+            MODEL_NAME = model_name
+            break
+        except Exception:
+            continue
+
+    if not MODEL_NAME:
+        st.error("❌ Could not find a compatible Gemini model. Please check your API key and try again.")
+        st.info("ℹ️ You may need to update the google-generativeai library: `pip install --upgrade google-generativeai`")
+        st.stop()
 else:
     st.error("❌ Google API Key not found. Please configure it using one of these methods:")
     st.markdown("""
@@ -281,6 +304,11 @@ def read_url(url):
 def page_home():
     """Home page"""
     st.title("📰 Fake News Detector")
+
+    # Show which model is being used
+    if MODEL_NAME:
+        st.info(f"🤖 Using AI Model: **{MODEL_NAME}**")
+
     st.markdown("""
     This tool uses **Google Gemini** to analyze news articles and determine whether they are **Fake**, **Real**, or **Uncertain**.
 
@@ -447,7 +475,7 @@ def page_detector():
                 "score": result["credibility_score"],
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "language": st.session_state.language,
-                "model": "Gemini Pro",
+                "model": MODEL_NAME,
                 "input_method": st.session_state.input_method
             }
             
