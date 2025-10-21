@@ -60,7 +60,7 @@ if not API_KEY:
 
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    MODEL_NAME = "gemini-1.5-flash"
+    MODEL_NAME = "gemini-pro"
 else:
     st.error("❌ Google API Key not found. Please configure it using one of these methods:")
     st.markdown("""
@@ -447,7 +447,7 @@ def page_detector():
                 "score": result["credibility_score"],
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "language": st.session_state.language,
-                "model": "Gemini 1.5 Flash",
+                "model": "Gemini Pro",
                 "input_method": st.session_state.input_method
             }
             

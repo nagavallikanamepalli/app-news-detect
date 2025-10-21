@@ -8,7 +8,7 @@ An AI-powered fake news detection application using **Google Gemini** and **Stre
 
 - **Multi-language Support** - Analyze news in English, Hindi, Telugu, Spanish, and French
 - **Multiple Input Methods** - Paste text, upload PDF files, or fetch from URLs
-- **AI-Powered Analysis** - Uses Google Gemini 1.5 Flash for intelligent fact-checking
+- **AI-Powered Analysis** - Uses Google Gemini Pro for intelligent fact-checking
 - **Credibility Scoring** - Get a 0-100 credibility score for each article
 - **History Tracking** - Keep records of all your analyses
 - **Analytics Dashboard** - View statistics and trends
@@ -153,7 +153,7 @@ Choose your input method:
 ### API Usage
 
 The app uses:
-- **Model**: Gemini 1.5 Flash
+- **Model**: Gemini Pro
 - **Purpose**: Fake news detection and analysis
 - **Response Format**: JSON with verdict, reason, and credibility score
 
